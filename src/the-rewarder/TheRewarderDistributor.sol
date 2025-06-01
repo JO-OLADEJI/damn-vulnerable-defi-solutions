@@ -77,6 +77,13 @@ contract TheRewarderDistributor {
         }
     }
 
+    // struct Claim {
+    //     uint256 batchNumber;
+    //     uint256 amount;
+    //     uint256 tokenIndex;
+    //     bytes32[] proof;
+    // }
+
     // Allow claiming rewards of multiple tokens in a single transaction
     function claimRewards(Claim[] memory inputClaims, IERC20[] memory inputTokens) external {
         Claim memory inputClaim;
@@ -90,6 +97,8 @@ contract TheRewarderDistributor {
             uint256 wordPosition = inputClaim.batchNumber / 256;
             uint256 bitPosition = inputClaim.batchNumber % 256;
 
+            // i = 0; token == address(0)
+            // i = 1; token = inputTokens[inputClaim.tokenIndex]
             if (token != inputTokens[inputClaim.tokenIndex]) {
                 if (address(token) != address(0)) {
                     if (!_setClaimed(token, amount, wordPosition, bitsSet)) revert AlreadyClaimed();
