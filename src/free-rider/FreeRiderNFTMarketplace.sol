@@ -29,7 +29,7 @@ contract FreeRiderNFTMarketplace is ReentrancyGuard {
     constructor(uint256 amount) payable {
         DamnValuableNFT _token = new DamnValuableNFT();
         _token.renounceOwnership();
-        for (uint256 i = 0; i < amount;) {
+        for (uint256 i = 0; i < amount; ) {
             _token.safeMint(msg.sender);
             unchecked {
                 ++i;
@@ -38,7 +38,10 @@ contract FreeRiderNFTMarketplace is ReentrancyGuard {
         token = _token;
     }
 
-    function offerMany(uint256[] calldata tokenIds, uint256[] calldata prices) external nonReentrant {
+    function offerMany(
+        uint256[] calldata tokenIds,
+        uint256[] calldata prices
+    ) external nonReentrant {
         uint256 amount = tokenIds.length;
         if (amount == 0) {
             revert InvalidTokensAmount();
@@ -66,7 +69,10 @@ contract FreeRiderNFTMarketplace is ReentrancyGuard {
             revert CallerNotOwner(tokenId);
         }
 
-        if (_token.getApproved(tokenId) != address(this) && !_token.isApprovedForAll(msg.sender, address(this))) {
+        if (
+            _token.getApproved(tokenId) != address(this) &&
+            !_token.isApprovedForAll(msg.sender, address(this))
+        ) {
             revert InvalidApproval();
         }
 
@@ -80,7 +86,9 @@ contract FreeRiderNFTMarketplace is ReentrancyGuard {
         emit NFTOffered(msg.sender, tokenId, price);
     }
 
-    function buyMany(uint256[] calldata tokenIds) external payable nonReentrant {
+    function buyMany(
+        uint256[] calldata tokenIds
+    ) external payable nonReentrant {
         for (uint256 i = 0; i < tokenIds.length; ++i) {
             unchecked {
                 _buyOne(tokenIds[i]);
